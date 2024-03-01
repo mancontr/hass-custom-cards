@@ -47,14 +47,14 @@ class TemperatureHumidityCard extends LitElement {
           </h1>
         </header>
         <main>
-          <div class="temperature">
+          <div class="temperature" @click=${() => this.entityClicked(this.config.temperature)}>
             <ha-icon icon="mdi:thermometer"></ha-icon>
             <span class="value">
               ${(Math.round(parseFloat(this.hass.states[this.config.temperature].state) * 10) / 10).toFixed(1)}
             </span>
             <span class="units">ºC</span>
           </div>
-          <div class="humidity">
+          <div class="humidity" @click=${() => this.entityClicked(this.config.humidity)}>
             <ha-icon icon="mdi:water-percent"></ha-icon>
             <span class="value">
               ${Math.round(parseFloat(this.hass.states[this.config.humidity].state))}
@@ -64,6 +64,15 @@ class TemperatureHumidityCard extends LitElement {
         </main>
       </ha-card>
     `
+  }
+
+  entityClicked(entityId) {
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId },
+    })
+    this.dispatchEvent(event)
   }
 
   static get styles() {
@@ -94,6 +103,7 @@ class TemperatureHumidityCard extends LitElement {
         text-align: center;
       }
       .temperature, .humidity {
+        cursor: pointer;
         display: flex;
         align-items: center;
       }
