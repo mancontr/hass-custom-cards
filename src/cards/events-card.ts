@@ -121,12 +121,21 @@ class EventsCard extends LitElement {
 
     return html`
       ${prefix}
-      <div class="event-entry">
+      <div class="event-entry" @click=${() => this.entityClicked(event.e)}>
         <div class="event-icon"><ha-icon icon="${icon}"></ha-icon></div>
         <div class="event-title">${name}</div>
         <div class="event-value" title="${fullTs}">${ts}</div>
       </div>
     `
+  }
+
+  entityClicked(entityId) {
+    const event = new CustomEvent('hass-more-info', {
+      bubbles: true,
+      composed: true,
+      detail: { entityId },
+    })
+    this.dispatchEvent(event)
   }
 
   static get styles() {
