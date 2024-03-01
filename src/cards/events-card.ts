@@ -11,19 +11,30 @@ interface EntityDetails {
   entity: string
   name?: string
   icon?: string
+  group?: string
 }
 
 type EntityDetailsOrId = EntityDetails | string
 
+interface RawEventInfo {
+  s: 'on' | 'off' | 'unknown' // State
+  lu: number // Timestamp
+}
+
 interface EventInfo {
-  s: 'on' | 'off' | 'unknown'
-  lu: number
-  e: string
+  entityId: string
+  ts: number
+  date: Date
+  isFirstOfDay?: boolean
+  grouped?: EventInfo[]
+  groupLastTs?: number
+  removed?: boolean
 }
 
 class EventsCard extends LitElement {
   config: EventsCardConfig
   hass: ExtendedHomeAssistant
+  entityConfig: Map<string, EntityDetails>
   events: EventInfo[]
 
   static getConfigElement() {
@@ -40,6 +51,7 @@ class EventsCard extends LitElement {
     return {
       hass: {},
       config: {},
+      entityConfig: {},
       events: {},
     }
   }
@@ -50,17 +62,26 @@ class EventsCard extends LitElement {
 
   setConfig(config: EventsCardConfig) {
     this.config = config
+    this.entityConfig = new Map<string, EntityDetails>()
+    this.config.entities.forEach(e => {
+      if (typeof e === 'string') {
+        this.entityConfig.set(e, { entity: e })
+      } else {
+        this.entityConfig.set(e.entity, e)
+      }
+    })
   }
 
   L(key: string): string {
     return L(this.hass, key)
   }
 
-  firstUpdated() {
+  async firstUpdated() {
     const ids = this.config?.entities.map(e => typeof e === 'string' ? e : e.entity)
     const start = new Date()
     start.setDate(start.getDate() - 1) // 1 day of activity
-    return this.hass.callWS({
+    // Get the events
+    const rawEvents: {[x: string]: RawEventInfo[]} = await this.hass.callWS({
       type: 'history/history_during_period',
       entity_ids: ids,
       start_time: start.toISOString(),
@@ -68,18 +89,50 @@ class EventsCard extends LitElement {
       minimal_response: true,
       no_attributes: true,
       significant_changes_only: true,
+    }) || {}
+    // Merge all events together and sort by date
+    const events: EventInfo[] = []
+    ids.forEach(id => {
+      rawEvents[id] && events.push(...rawEvents[id]
+        .filter(evt => evt.s === 'on')
+        .map(evt => ({
+          entityId: id,
+          ts: evt.lu,
+          date: new Date(evt.lu * 1000)
+        }))
+      )
     })
-    .then(res => {
-      const events: EventInfo[] = []
-      ids.forEach(id => {
-        res[id] && events.push(...res[id]
-          .filter(evt => evt.s === 'on')
-          .map(evt => ({ ...evt, e: id }))
-        )
-      })
-      events.sort((a, b) => b.lu - a.lu)
-      this.events = events
-    })
+    events.sort((a, b) => b.ts - a.ts)
+    // Group them as needed and mark first of day, removed
+    const groupEvt = new Map<string, EventInfo>()
+    let lastDay: number = null
+    for (const evt of events) {
+      // First of day?
+      const evtDate = evt.date.getUTCDate()
+      if (!lastDay || evtDate !== lastDay) {
+        lastDay = evtDate
+        evt.isFirstOfDay = true
+      }
+      // Can be grouped?
+      const groupingRange = 300 // TODO: Configurable?
+      const entityCfg = this.entityConfig.get(evt.entityId)
+      const group = entityCfg.group
+      if (group) {
+        const lastEvtGroup = groupEvt.get(group)
+        const lastEvtTs = lastEvtGroup && (lastEvtGroup.groupLastTs || lastEvtGroup.ts)
+        const canGroup = lastEvtGroup && (lastEvtTs - evt.ts) <= groupingRange
+        if (canGroup) {
+          lastEvtGroup.grouped = lastEvtGroup.grouped || []
+          lastEvtGroup.grouped.push(evt)
+          lastEvtGroup.groupLastTs = evt.ts
+          evt.removed = true
+        } else {
+          groupEvt.set(group, evt)
+        }
+      }
+    }
+    // Remove all "removed" events
+    this.events = events.filter(e => !e.removed)
   }
 
   render() {
@@ -102,38 +155,46 @@ class EventsCard extends LitElement {
   }
 
   renderEvent(event: EventInfo, prevEvent?: EventInfo) {
-    const entity = this.hass.entities[event.e]
-    const opts: EntityDetails = this.config.entities.find(e => typeof e !== 'string' && e.entity === event.e) as EntityDetails
-    const name = opts?.name || entity.name
-    const icon = opts?.icon || 'mdi:motion-sensor'
+    const entity = this.hass.entities[event.entityId]
+    const opts: EntityDetails = this.entityConfig.get(event.entityId)
+    const name = opts.name || entity.name
+    const icon = opts.icon || 'mdi:motion-sensor'
 
-    const when = new Date(event.lu * 1000)
-    const fullTs = when.toLocaleString()
-    const ts = when.toLocaleTimeString('es-ES', { hour: "2-digit", minute: "2-digit" })
+    const fullTs = event.date.toLocaleString()
+    const ts = event.date.toLocaleTimeString('es-ES', { hour: "2-digit", minute: "2-digit" })
 
-    const prevWhen = prevEvent && new Date(prevEvent.lu * 1000)
-    const isFirstOfDay = !prevEvent || (prevWhen.getDate() !== when.getDate())
-    const prefix = !isFirstOfDay ? '' : html`
+    const prefix = !event.isFirstOfDay ? '' : html`
       <div class="event-day-header">
-        <h4>${when.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}</h4>
+        <h4>${event.date.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}</h4>
       </div>
     `
 
     return html`
       ${prefix}
-      <div class="event-entry" @click=${() => this.entityClicked(event.e)}>
-        <div class="event-icon"><ha-icon icon="${icon}"></ha-icon></div>
-        <div class="event-title">${name}</div>
+      <div class="event-entry">
+        <div class="event-icon" @click=${() => this.eventClicked(event)}>
+          <ha-icon icon="${icon}" />
+        </div>
+        <div class="event-title">
+          <span class="entity" @click=${() => this.eventClicked(event)}>
+            ${name}
+          </span>
+          ${event.grouped?.length > 0
+            ? html`<span class="note"> (y ${event.grouped.length} más)</span>`
+            : ''
+          }
+        </div>
         <div class="event-value" title="${fullTs}">${ts}</div>
       </div>
     `
   }
 
-  entityClicked(entityId) {
+  eventClicked(evt: EventInfo) {
+    console.log('Click:', evt)
     const event = new CustomEvent('hass-more-info', {
       bubbles: true,
       composed: true,
-      detail: { entityId },
+      detail: { entityId: evt.entityId },
     })
     this.dispatchEvent(event)
   }
@@ -186,11 +247,14 @@ class EventsCard extends LitElement {
         text-align: center;
       }
       .event-title {
-        cursor: pointer;
         flex: 1 1 auto;
         overflow: hidden;
         text-overflow: ellipsis;
         margin: 0 8px 0 16px;
+      }
+      .event-title .entity {
+        cursor: pointer;
+        color: var(--primary-color)
       }
       .event-value {
         flex: 0 0 auto;
