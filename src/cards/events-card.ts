@@ -108,8 +108,8 @@ class EventsCard extends LitElement {
     let lastDay: number = null
     for (const evt of events) {
       // First of day?
-      const evtDate = evt.date.getUTCDate()
-      if (!lastDay || evtDate !== lastDay) {
+      const evtDate = evt.date.getDate()
+      if (lastDay === null || evtDate !== lastDay) {
         lastDay = evtDate
         evt.isFirstOfDay = true
       }
