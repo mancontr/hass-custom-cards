@@ -39,6 +39,9 @@ class TemperatureHumidityCard extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``
 
+    const temp = parseFloat(this.hass.states[this.config.temperature].state)
+    const hum = parseFloat(this.hass.states[this.config.humidity].state)
+
     return html`
       <ha-card>
         <header>
@@ -50,14 +53,14 @@ class TemperatureHumidityCard extends LitElement {
           <div class="temperature" @click=${() => this.entityClicked(this.config.temperature)}>
             <ha-icon icon="mdi:thermometer"></ha-icon>
             <span class="value">
-              ${(Math.round(parseFloat(this.hass.states[this.config.temperature].state) * 10) / 10).toFixed(1)}
+              ${isNaN(temp) ? '--.-' : (Math.round(temp * 10) / 10).toFixed(1)}
             </span>
             <span class="units">ºC</span>
           </div>
           <div class="humidity" @click=${() => this.entityClicked(this.config.humidity)}>
             <ha-icon icon="mdi:water-percent"></ha-icon>
             <span class="value">
-              ${Math.round(parseFloat(this.hass.states[this.config.humidity].state))}
+              ${isNaN(hum) ? '--' : Math.round(hum)}
             </span>
             <span class="units">%</span>
           </div>
@@ -111,7 +114,7 @@ class TemperatureHumidityCard extends LitElement {
         font-size: 28px;
       }
       .temperature .units {
-        align-self: end;
+        margin-bottom: 10px;
       }
       .units {
         color: var(--secondary-text-color);

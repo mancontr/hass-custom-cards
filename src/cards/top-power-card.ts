@@ -96,7 +96,7 @@ class TopPowerCard extends LitElement {
       <div class="section-entry ${status}" @click="${() => this.entryClicked(device.entity)}">
         <div class="section-icon"><ha-icon icon="mdi:flash"></ha-icon></div>
         <div class="section-title">${name}</div>
-        <div class="section-value">${!isNaN(value) ? value + ' W' : '--'}</div>
+        <div class="section-value">${!isNaN(value) ? Math.round(value) + ' W' : '--'}</div>
       </div>
     `
   }
