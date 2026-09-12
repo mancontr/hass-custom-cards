@@ -19,3 +19,4 @@ Check the details for each specific card:
 - [Sprinklers Card](./docs/sprinklers-card.md): Manage your EspHome Sprinklers system
 - [Temperature Humidity Card](./docs/temperature-humidity-card.md): Show temperature and humidity in a single card
 - [Top Power Card](./docs/top-power-card.md): Show power consumption, sorting by value, to see the biggest consumers at a glance
+- [Weather Station Card](./docs/weather-station-card.md): Show a summary of your personal weather station

@@ -1,6 +1,6 @@
 {
   "name": "hass-custom-cards",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Custom Home Assistant cards compilation",
   "keywords": [
     "home-assistant",
@@ -16,7 +16,7 @@
     "build": "rollup -c rollup.config.js"
   },
   "author": "Anxo",
-  "license": "ISC",
+  "license": "BSD-3-Clause",
   "devDependencies": {
     "@rollup/plugin-json": "^6.0.1",
     "@rollup/plugin-node-resolve": "^15.2.3",

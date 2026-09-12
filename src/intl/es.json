@@ -9,5 +9,19 @@
   "sprinklers.valve.duration": "Duración",
   "sprinklers.valve.active": "Activo",
   "sprinklers.valve.last-watered": "Ult. riego",
-  "sprinklers.watering": "Regando"
+  "sprinklers.watering": "Regando",
+  "weather.temperature": "Temperatura",
+  "weather.wind": "Viento",
+  "weather.precipitation": "Precipitación",
+  "weather.pressure": "Presión",
+  "weather.uv": "UV",
+  "weather.radiation": "Radiación",
+  "weather.dp": "PR",
+  "weather.rh": "HR",
+  "weather.gusts": "Rachas",
+  "weather.uv.low": "Bajo",
+  "weather.uv.moderate": "Moderado",
+  "weather.uv.high": "Alto",
+  "weather.uv.very-high": "Muy alto",
+  "weather.uv.extreme": "Extremo"
 }
