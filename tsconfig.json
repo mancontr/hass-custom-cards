@@ -4,5 +4,6 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "target": "ES6"
-  }
+  },
+  "include": ["src"]
 }
