@@ -23,5 +23,11 @@
   "weather.uv.moderate": "Moderate",
   "weather.uv.high": "High",
   "weather.uv.very-high": "Very high",
-  "weather.uv.extreme": "Extreme"
+  "weather.uv.extreme": "Extreme",
+  "temp_humidity.ventilation.dire": "Ventilate now — much more humid inside than outside",
+  "temp_humidity.ventilation.could": "You could ventilate — slightly more humid inside",
+  "temp_humidity.ventilation.neutral": "No need to ventilate — similar humidity inside and outside",
+  "temp_humidity.ventilation.avoid": "Better not to ventilate — slightly drier inside",
+  "temp_humidity.ventilation.dont": "Don't ventilate — much drier inside than outside",
+  "temp_humidity.dew_point": "DP"
 }
