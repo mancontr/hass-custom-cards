@@ -34,11 +34,11 @@ function absoluteHumidity(tempC: number, rh: number): number {
 // A continuous green -> red hue progression rather than a flat "good/bad" pair,
 // so the 5 states read as points along a gradient instead of a binary signal.
 const VENTILATION_STATES: VentilationState[] = [
-  { key: 'dire', icon: 'mdi:fan', color: '#15803d' },
-  { key: 'could', icon: 'mdi:fan-chevron-up', color: '#65a30d' },
-  { key: 'neutral', icon: 'mdi:fan-off', color: '#ca8a04' },
-  { key: 'avoid', icon: 'mdi:fan-chevron-down', color: '#ea580c' },
-  { key: 'dont', icon: 'mdi:fan-remove', color: '#b91c1c' },
+  { key: 'dire', icon: 'mdi:fan', color: '#ff4040' },
+  { key: 'could', icon: 'mdi:fan', color: '#b7531d' },
+  { key: 'neutral', icon: 'mdi:fan', color: '#444444' },
+  { key: 'avoid', icon: 'mdi:fan-off', color: '#336893' },
+  { key: 'dont', icon: 'mdi:fan-off', color: '#4e9fe1' },
 ]
 
 function ventilationState(diff: number, mild: number, strong: number): VentilationState {

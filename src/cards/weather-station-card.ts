@@ -14,7 +14,7 @@ interface WeatherStationCardConfig {
   wind_bearing?: string
   precipitation_rate?: string
   precipitation_today?: string
-  precipitation_rate_max?: number
+  precipitation_today_max?: number
   pressure?: string
   pressure_min?: number
   pressure_max?: number
@@ -244,8 +244,12 @@ class WeatherStationCard extends LitElement {
     const totalEntity = this.config.precipitation_today
     const rate = rateEntity ? this.value(rateEntity) : NaN
     const total = totalEntity ? this.value(totalEntity) : NaN
-    const max = this.config.precipitation_rate_max ?? 10
-    const ratio = ratioOf(rate, 0, max)
+
+    const primaryEntity = totalEntity || rateEntity
+    const primaryValue = totalEntity ? total : rate
+
+    const max = this.config.precipitation_today_max ?? 50
+    const ratio = ratioOf(primaryValue, 0, max)
 
     const dropPath = "M50 6 C50 6 72 44 72 58 A22 22 0 1 1 28 58 C28 44 50 6 50 6 Z"
     const fillY = 80 - ratio * 74
@@ -259,9 +263,6 @@ class WeatherStationCard extends LitElement {
       <path d="${dropPath}" class="drop-outline" />
       <path d="${dropPath}" class="drop-fill" clip-path="url(#dropClip)" />
     `
-
-    const primaryEntity = totalEntity || rateEntity
-    const primaryValue = totalEntity ? total : rate
 
     return this.renderTile(
       primaryEntity,
@@ -342,15 +343,14 @@ class WeatherStationCard extends LitElement {
     const radiation = this.value(this.config.solar_radiation)
     const max = this.config.solar_radiation_max ?? 1000
     const ratio = ratioOf(radiation, 0, max)
-    const sunR = 4 + ratio * 26
+    const sunR = ratio * 40
     const color = ratio < 0.5
       ? `color-mix(in srgb, #fde68a ${100 - ratio * 200}%, #f97316 ${ratio * 200}%)`
       : `color-mix(in srgb, #f97316 ${100 - (ratio - 0.5) * 200}%, #dc2626 ${(ratio - 0.5) * 200}%)`
 
     const visual = svg`
       <circle cx="50" cy="45" r="40" class="radiation-ring" />
-      ${!isNaN(radiation) ? svg`
-        <circle cx="50" cy="45" r="${sunR * 1.7}" fill="${color}" opacity="0.25" />
+      ${!isNaN(radiation) && sunR > 0 ? svg`
         <circle cx="50" cy="45" r="${sunR}" fill="${color}" />
       ` : ''}
     `

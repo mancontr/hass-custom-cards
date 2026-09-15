@@ -41,9 +41,9 @@ A comprehensive list of available options is provided below:
 | wind_speed                 | For wind tile | Sensor for the current wind speed |
 | wind_gust                  | No       | Sensor for wind gust speed, shown as secondary text |
 | wind_bearing                | No       | Sensor for wind direction in degrees, shown as an arrow on the compass |
-| precipitation_rate          | For precipitation tile* | Sensor for the current precipitation rate, used to fill the drop gauge |
-| precipitation_today         | For precipitation tile* | Sensor for today's accumulated precipitation, shown as the main value |
-| precipitation_rate_max      | No       | Rate at which the drop gauge is considered full (default `10`, in the unit of `precipitation_rate`) |
+| precipitation_rate          | For precipitation tile* | Sensor for the current precipitation rate, shown as secondary text |
+| precipitation_today         | For precipitation tile* | Sensor for today's accumulated precipitation, shown as the main value and used to fill the drop gauge |
+| precipitation_today_max     | No       | Accumulated total at which the drop gauge is considered full (default `50`, in the unit of `precipitation_today`) |
 | pressure                   | For pressure tile | Sensor for the current atmospheric pressure |
 | pressure_min                | No       | Lower bound of the pressure gauge (default `970`) |
 | pressure_max                | No       | Upper bound of the pressure gauge (default `1050`) |
@@ -52,6 +52,6 @@ A comprehensive list of available options is provided below:
 | solar_radiation              | For radiation tile | Sensor for the current solar radiation |
 | solar_radiation_max          | No       | Value at which the radiation gauge is considered at its maximum (default `1000`) |
 
-\* The precipitation tile is shown if either `precipitation_rate` or `precipitation_today` is set; provide both for the full display (accumulated total as the main value, current rate as secondary text and gauge fill).
+\* The precipitation tile is shown if either `precipitation_rate` or `precipitation_today` is set; provide both for the full display (accumulated total as the main value and gauge fill, current rate as secondary text). If only `precipitation_rate` is set, it is used as the main value and gauge fill instead.
 
 Units are read from each sensor's own `unit_of_measurement`, so the card works with both metric and imperial stations.
