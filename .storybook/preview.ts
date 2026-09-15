@@ -2,6 +2,10 @@ import type { Preview } from "@storybook/web-components-vite"
 import { html } from "lit"
 import "../src/index"
 import { installMocks } from "../dev/mocks"
+import "@fontsource/roboto/300.css"
+import "@fontsource/roboto/400.css"
+import "@fontsource/roboto/500.css"
+import "@fontsource/roboto/700.css"
 
 installMocks()
 
@@ -18,6 +22,7 @@ const THEMES: Record<string, Record<string, string>> = {
     "--disabled-text-color": "#6f6f6f",
     "--divider-color": "#333",
     "--primary-color": "#58a6ff",
+    "--ha-card-border-color": "rgba(255, 255, 255, 0.12)",
     "--paper-item-icon-color": "#a1a1a1",
     "--scrollbar-thumb-color": "#555",
     "--ha-card-header-color": "#e1e1e1",
@@ -38,6 +43,7 @@ const THEMES: Record<string, Record<string, string>> = {
     "--disabled-text-color": "#b0b0b0",
     "--divider-color": "#e0e0e0",
     "--primary-color": "#1a73e8",
+    "--ha-card-border-color": "rgba(0, 0, 0, 0.12)",
     "--paper-item-icon-color": "#44739e",
     "--scrollbar-thumb-color": "#ccc",
     "--ha-card-header-color": "#1c1c1c",

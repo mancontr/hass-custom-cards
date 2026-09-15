@@ -32,7 +32,7 @@ function createCardShell(
   shell.style.background = "var(--card-background-color)"
   shell.style.borderRadius = "12px"
   shell.style.overflow = "hidden"
-  shell.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.3)"
+  shell.style.border = "1px solid var(--ha-card-border-color, rgba(255, 255, 255, 0.12))"
 
   const el = document.createElement(tag) as HTMLElement & {
     hass: unknown

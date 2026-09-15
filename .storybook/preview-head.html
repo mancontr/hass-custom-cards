@@ -1,0 +1,17 @@
+<style>
+  /* Real Home Assistant sets this globally; without it the preview falls
+     back to the browser's default font, which throws off both the look
+     and the exact height of every card (different fonts have different
+     line-height metrics at the same font-size). Roboto itself is loaded
+     via @fontsource in .storybook/preview.ts (self-hosted, not the Google
+     Fonts CDN — a tracking-protection/ad-blocker extension can silently
+     block that and fall back to a system font instead). */
+  body {
+    font-family: "Roboto", "Noto Sans", sans-serif;
+    font-size: 14px; /* HA's --ha-font-size-m base */
+    /* No explicit line-height: Roboto's own "normal" already computes to
+       1.6x the font-size (confirmed against a real instance at 10px, 14px
+       and 28px) — forcing one fixed value here just clobbers smaller
+       text's naturally-smaller line-height instead of matching it. */
+  }
+</style>
