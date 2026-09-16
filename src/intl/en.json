@@ -1,5 +1,6 @@
 {
   "events.title": "Activity",
+  "events.grouped": "(and {count} more)",
   "power.title": "Energy",
   "sprinklers.last-watered": "Last watered",
   "sprinklers.title": "Irrigation",

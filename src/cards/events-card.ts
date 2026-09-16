@@ -36,6 +36,7 @@ class EventsCard extends LitElement {
   hass: ExtendedHomeAssistant
   entityConfig: Map<string, EntityDetails>
   events: EventInfo[]
+  expandedGroupTs?: number
 
   static getConfigElement() {
     return document.createElement("events-card-editor")
@@ -53,6 +54,7 @@ class EventsCard extends LitElement {
       config: {},
       entityConfig: {},
       events: {},
+      expandedGroupTs: {},
     }
   }
 
@@ -72,8 +74,12 @@ class EventsCard extends LitElement {
     })
   }
 
-  L(key: string): string {
-    return L(this.hass, key)
+  L(key: string, params?: { [k: string]: string | number }): string {
+    return L(this.hass, key, params)
+  }
+
+  get locale(): string {
+    return this.hass.locale?.language || this.hass.language || 'en'
   }
 
   async firstUpdated() {
@@ -119,8 +125,9 @@ class EventsCard extends LitElement {
       const group = entityCfg.group
       if (group) {
         const lastEvtGroup = groupEvt.get(group)
-        const lastEvtTs = lastEvtGroup && (lastEvtGroup.groupLastTs || lastEvtGroup.ts)
-        const canGroup = lastEvtGroup && (lastEvtTs - evt.ts) <= groupingRange
+        const canGroup = lastEvtGroup !== undefined
+          && (lastEvtGroup.groupLastTs || lastEvtGroup.ts) - evt.ts <= groupingRange
+          && evt.date.toDateString() === lastEvtGroup.date.toDateString()
         if (canGroup) {
           lastEvtGroup.grouped = lastEvtGroup.grouped || []
           lastEvtGroup.grouped.push(evt)
@@ -161,13 +168,16 @@ class EventsCard extends LitElement {
     const icon = opts.icon || 'mdi:motion-sensor'
 
     const fullTs = event.date.toLocaleString()
-    const ts = event.date.toLocaleTimeString('es-ES', { hour: "2-digit", minute: "2-digit" })
+    const ts = event.date.toLocaleTimeString(this.locale, { hour: "2-digit", minute: "2-digit" })
 
     const prefix = !event.isFirstOfDay ? '' : html`
       <div class="event-day-header">
-        <h4>${event.date.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}</h4>
+        <h4>${event.date.toLocaleDateString(this.locale, { day: 'numeric', month: 'long', year: 'numeric' })}</h4>
       </div>
     `
+
+    const grouped = event.grouped
+    const isExpanded = grouped !== undefined && grouped.length > 0 && this.expandedGroupTs === event.ts
 
     return html`
       ${prefix}
@@ -179,14 +189,47 @@ class EventsCard extends LitElement {
           <span class="entity" @click=${() => this.eventClicked(event)}>
             ${name}
           </span>
-          ${event.grouped?.length > 0
-            ? html`<span class="note"> (y ${event.grouped.length} más)</span>`
+          ${grouped !== undefined && grouped.length > 0
+            ? html`
+              <span class="note" @click=${() => this.toggleGroup(event)}>
+                ${this.L('events.grouped', { count: grouped.length })}
+              </span>
+            `
             : ''
           }
         </div>
         <div class="event-value" title="${fullTs}">${ts}</div>
       </div>
+      ${isExpanded ? grouped.map(subEvent => this.renderSubEvent(subEvent)) : ''}
     `
+  }
+
+  renderSubEvent(event: EventInfo) {
+    const entity = this.hass.entities[event.entityId]
+    const opts = this.entityConfig.get(event.entityId)!
+    const name = opts.name || entity.name
+    const icon = opts.icon || 'mdi:motion-sensor'
+
+    const fullTs = event.date.toLocaleString()
+    const ts = event.date.toLocaleTimeString(this.locale, { hour: "2-digit", minute: "2-digit" })
+
+    return html`
+      <div class="event-entry event-entry--sub">
+        <div class="event-icon" @click=${() => this.eventClicked(event)}>
+          <ha-icon icon="${icon}" />
+        </div>
+        <div class="event-title">
+          <span class="entity" @click=${() => this.eventClicked(event)}>
+            ${name}
+          </span>
+        </div>
+        <div class="event-value" title="${fullTs}">${ts}</div>
+      </div>
+    `
+  }
+
+  toggleGroup(event: EventInfo) {
+    this.expandedGroupTs = this.expandedGroupTs === event.ts ? undefined : event.ts
   }
 
   eventClicked(evt: EventInfo) {
@@ -260,6 +303,20 @@ class EventsCard extends LitElement {
         flex: 0 0 auto;
         color: var(--disabled-text-color);
         margin-right: 10px;
+      }
+      .note {
+        cursor: pointer;
+        text-decoration: underline dotted;
+      }
+      .event-entry--sub {
+        margin-left: 40px;
+        opacity: 0.8;
+      }
+      .event-entry--sub .event-icon {
+        --mdc-icon-size: 18px;
+        height: 30px;
+        width: 30px;
+        line-height: 30px;
       }
     `
   }

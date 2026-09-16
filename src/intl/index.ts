@@ -7,8 +7,10 @@ export const languages: { [k: string]: { [k: string]: string} } = {
   es,
 }
 
-export default function L(hass: ExtendedHomeAssistant, key: string) {
+export default function L(hass: ExtendedHomeAssistant, key: string, params?: { [k: string]: string | number }) {
   const userLang = hass.selectedLanguage || hass.language || 'en'
   const lang = languages[userLang] || languages.en
-  return lang[key] || languages.en[key] || key
+  const template = lang[key] || languages.en[key] || key
+  if (!params) return template
+  return Object.keys(params).reduce((str, k) => str.replace(`{${k}}`, String(params[k])), template)
 }
