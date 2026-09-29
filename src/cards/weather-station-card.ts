@@ -28,6 +28,11 @@ const COMPASS_POINTS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', '
 
 const UV_BAND_COLORS = ['#7c3aed', '#dc2626', '#f97316', '#eab308', '#65a30d', '#16a34a'] // top (extreme) to bottom (low)
 
+interface SubLine {
+  text: string
+  entityId?: string
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
@@ -130,7 +135,7 @@ class WeatherStationCard extends LitElement {
     return state?.attributes?.unit_of_measurement ?? fallback
   }
 
-  renderTile(entityId: string, titleKey: string, visual: unknown, value: unknown, unit: string, sub: string[]) {
+  renderTile(entityId: string, titleKey: string, visual: unknown, value: unknown, unit: string, sub: SubLine[]) {
     return html`
       <div class="tile">
         <div class="tile-title">${this.L(titleKey)}</div>
@@ -142,7 +147,10 @@ class WeatherStationCard extends LitElement {
           <span class="tile-value-unit">${unit}</span>
         </div>
         <div class="tile-sub">
-          ${sub.map(line => html`<div class="tile-sub-line">${line}</div>`)}
+          ${sub.map(line => line.entityId
+            ? html`<div class="tile-sub-line clickable" @click=${() => this.entityClicked(line.entityId)}>${line.text}</div>`
+            : html`<div class="tile-sub-line">${line.text}</div>`
+          )}
         </div>
       </div>
     `
@@ -175,9 +183,9 @@ class WeatherStationCard extends LitElement {
       ${!isNaN(temp) ? svg`<circle cx="${tempPoint.x}" cy="${tempPoint.y}" r="5.5" fill="#fff" stroke="var(--card-background-color, #1c1c1c)" stroke-width="2" />` : ''}
     `
 
-    const subParts: string[] = []
-    if (!isNaN(dp)) subParts.push(`${dp.toFixed(1)}° ${this.L('weather.dp')}`)
-    if (!isNaN(rh)) subParts.push(`${Math.round(rh)}% ${this.L('weather.rh')}`)
+    const subParts: SubLine[] = []
+    if (!isNaN(dp)) subParts.push({ text: `${dp.toFixed(1)}° ${this.L('weather.dp')}`, entityId: this.config.dewpoint })
+    if (!isNaN(rh)) subParts.push({ text: `${Math.round(rh)}% ${this.L('weather.rh')}`, entityId: this.config.humidity })
 
     return this.renderTile(
       this.config.temperature,
@@ -225,9 +233,9 @@ class WeatherStationCard extends LitElement {
       ` : ''}
     `
 
-    const subParts: string[] = []
-    if (!isNaN(gust)) subParts.push(`${this.L('weather.gusts')} ${Math.round(gust)} ${this.unit(this.config.wind_gust, this.unit(this.config.wind_speed, 'km/h'))}`)
-    if (!isNaN(bearing)) subParts.push(`${Math.round(bearing)}° ${compassAbbr(bearing)}`)
+    const subParts: SubLine[] = []
+    if (!isNaN(gust)) subParts.push({ text: `${this.L('weather.gusts')} ${Math.round(gust)} ${this.unit(this.config.wind_gust, this.unit(this.config.wind_speed, 'km/h'))}`, entityId: this.config.wind_gust })
+    if (!isNaN(bearing)) subParts.push({ text: `${Math.round(bearing)}° ${compassAbbr(bearing)}`, entityId: this.config.wind_bearing })
 
     return this.renderTile(
       this.config.wind_speed,
@@ -264,13 +272,14 @@ class WeatherStationCard extends LitElement {
       <path d="${dropPath}" class="drop-fill" clip-path="url(#dropClip)" />
     `
 
+    // The daily total's history is just a staircase, so clicking the tile opens the rate instead.
     return this.renderTile(
-      primaryEntity,
+      rateEntity || totalEntity,
       'weather.precipitation',
       visual,
       isNaN(primaryValue) ? '--' : primaryValue.toFixed(primaryValue % 1 === 0 ? 0 : 1),
       this.unit(primaryEntity, 'mm'),
-      rateEntity ? [`${isNaN(rate) ? '--' : rate.toFixed(1)} ${this.unit(rateEntity, 'mm/hr')}`] : [],
+      rateEntity ? [{ text: `${isNaN(rate) ? '--' : rate.toFixed(1)} ${this.unit(rateEntity, 'mm/hr')}`, entityId: rateEntity }] : [],
     )
   }
 
@@ -335,7 +344,7 @@ class WeatherStationCard extends LitElement {
       visual,
       isNaN(uv) ? '--' : Math.round(uv),
       '',
-      [this.L(`weather.uv.${uvLevel(uv, max)}`)],
+      [{ text: this.L(`weather.uv.${uvLevel(uv, max)}`) }],
     )
   }
 
@@ -500,6 +509,9 @@ class WeatherStationCard extends LitElement {
       }
       .tile-sub-line {
         white-space: nowrap;
+      }
+      .tile-sub-line.clickable {
+        cursor: pointer;
       }
       .compass-ring {
         fill: none;
