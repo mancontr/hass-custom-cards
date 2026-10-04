@@ -19,8 +19,8 @@ interface CircuitEntry {
 }
 
 class TopPowerCard extends LitElement {
-  config: TopPowerCardConfig
-  hass: ExtendedHomeAssistant
+  config!: TopPowerCardConfig
+  hass!: ExtendedHomeAssistant
 
   static getConfigElement() {
     return document.createElement("top-power-card-editor")
@@ -61,8 +61,9 @@ class TopPowerCard extends LitElement {
       value: parseFloat(this.hass.states[device.entity].state)
     }))
     entries.sort((a, b) => a.value > b.value ? -1 : 1)
-    if (this.config.limit > 0) {
-      entries.splice(this.config.limit, entries.length - this.config.limit)
+    const limit = this.config.limit
+    if (limit && limit > 0) {
+      entries.splice(limit, entries.length - limit)
     }
 
     return html`
@@ -101,7 +102,7 @@ class TopPowerCard extends LitElement {
     `
   }
 
-  entryClicked(entityId) {
+  entryClicked(entityId: string) {
     const event = new CustomEvent('hass-more-info', {
       bubbles: true,
       composed: true,

@@ -20,14 +20,14 @@ interface ValveEntry {
 }
 
 interface IdTsMap {
-  [id: string]: number
+  [id: string]: number | null
 }
 
 class SprinklersCard extends LitElement {
   lastOn: IdTsMap
   showModal: boolean
-  config: SprinklersCardConfig
-  hass: ExtendedHomeAssistant
+  config!: SprinklersCardConfig
+  hass!: ExtendedHomeAssistant
 
   static getConfigElement() {
     return document.createElement("sprinklers-card-editor")
@@ -72,7 +72,7 @@ class SprinklersCard extends LitElement {
   getSwitchLastOn(ids: string[]): Promise<IdTsMap> {
     const start = new Date()
     start.setMonth(start.getMonth() - 1)
-    return this.hass.callWS({
+    return this.hass.callWS<{ [id: string]: EntityHistoryEntry[] }>({
       type: 'history/history_during_period',
       entity_ids: ids,
       start_time: start.toISOString(),

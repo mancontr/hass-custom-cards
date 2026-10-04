@@ -32,10 +32,10 @@ interface EventInfo {
 }
 
 class EventsCard extends LitElement {
-  config: EventsCardConfig
-  hass: ExtendedHomeAssistant
-  entityConfig: Map<string, EntityDetails>
-  events: EventInfo[]
+  config!: EventsCardConfig
+  hass!: ExtendedHomeAssistant
+  entityConfig!: Map<string, EntityDetails>
+  events!: EventInfo[]
   expandedGroupTs?: number
 
   static getConfigElement() {
@@ -111,7 +111,7 @@ class EventsCard extends LitElement {
     events.sort((a, b) => b.ts - a.ts)
     // Group them as needed and mark first of day, removed
     const groupEvt = new Map<string, EventInfo>()
-    let lastDay: number = null
+    let lastDay: number | null = null
     for (const evt of events) {
       // First of day?
       const evtDate = evt.date.getDate()
@@ -121,7 +121,7 @@ class EventsCard extends LitElement {
       }
       // Can be grouped?
       const groupingRange = 300 // TODO: Configurable?
-      const entityCfg = this.entityConfig.get(evt.entityId)
+      const entityCfg = this.entityConfig.get(evt.entityId)!
       const group = entityCfg.group
       if (group) {
         const lastEvtGroup = groupEvt.get(group)
@@ -163,7 +163,7 @@ class EventsCard extends LitElement {
 
   renderEvent(event: EventInfo, prevEvent?: EventInfo) {
     const entity = this.hass.entities[event.entityId]
-    const opts: EntityDetails = this.entityConfig.get(event.entityId)
+    const opts = this.entityConfig.get(event.entityId)!
     const name = opts.name || entity.name
     const icon = opts.icon || 'mdi:motion-sensor'
 

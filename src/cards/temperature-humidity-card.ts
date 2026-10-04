@@ -50,8 +50,8 @@ function ventilationState(diff: number, mild: number, strong: number): Ventilati
 }
 
 class TemperatureHumidityCard extends LitElement {
-  config: TemperatureHumidityCardConfig
-  hass: ExtendedHomeAssistant
+  config!: TemperatureHumidityCardConfig
+  hass!: ExtendedHomeAssistant
 
   static getConfigElement() {
     return document.createElement("temperature-humidity-card-editor")
@@ -149,7 +149,7 @@ class TemperatureHumidityCard extends LitElement {
     `
   }
 
-  entityClicked(entityId) {
+  entityClicked(entityId: string) {
     const event = new CustomEvent('hass-more-info', {
       bubbles: true,
       composed: true,

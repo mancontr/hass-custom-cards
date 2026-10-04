@@ -73,8 +73,8 @@ function uvLevel(value: number, max: number): string {
 }
 
 class WeatherStationCard extends LitElement {
-  config: WeatherStationCardConfig
-  hass: ExtendedHomeAssistant
+  config!: WeatherStationCardConfig
+  hass!: ExtendedHomeAssistant
 
   static getConfigElement() {
     return document.createElement("weather-station-card-editor")
@@ -125,17 +125,17 @@ class WeatherStationCard extends LitElement {
     `
   }
 
-  value(entityId: string): number {
-    const state = this.hass.states[entityId]
+  value(entityId?: string): number {
+    const state = entityId ? this.hass.states[entityId] : undefined
     return state ? parseFloat(state.state) : NaN
   }
 
-  unit(entityId: string, fallback: string): string {
-    const state = this.hass.states[entityId]
+  unit(entityId: string | undefined, fallback: string): string {
+    const state = entityId ? this.hass.states[entityId] : undefined
     return state?.attributes?.unit_of_measurement ?? fallback
   }
 
-  renderTile(entityId: string, titleKey: string, visual: unknown, value: unknown, unit: string, sub: SubLine[]) {
+  renderTile(entityId: string | undefined, titleKey: string, visual: unknown, value: unknown, unit: string, sub: SubLine[]) {
     return html`
       <div class="tile">
         <div class="tile-title">${this.L(titleKey)}</div>
@@ -377,7 +377,8 @@ class WeatherStationCard extends LitElement {
     )
   }
 
-  entityClicked(entityId: string) {
+  entityClicked(entityId?: string) {
+    if (!entityId) return
     const event = new CustomEvent('hass-more-info', {
       bubbles: true,
       composed: true,
