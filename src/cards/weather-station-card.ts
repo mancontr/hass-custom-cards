@@ -1,4 +1,4 @@
-import { html, css, svg, LitElement } from "lit"
+import { html, css, svg, LitElement, TemplateResult } from "lit"
 import L from "../intl"
 import { ExtendedHomeAssistant } from "../types"
 
@@ -29,7 +29,7 @@ const COMPASS_POINTS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', '
 const UV_BAND_COLORS = ['#7c3aed', '#dc2626', '#f97316', '#eab308', '#65a30d', '#16a34a'] // top (extreme) to bottom (low)
 
 interface SubLine {
-  text: string
+  text: string | TemplateResult
   entityId?: string
 }
 
@@ -184,8 +184,8 @@ class WeatherStationCard extends LitElement {
     `
 
     const subParts: SubLine[] = []
-    if (!isNaN(dp)) subParts.push({ text: `${dp.toFixed(1)}° ${this.L('weather.dp')}`, entityId: this.config.dewpoint })
-    if (!isNaN(rh)) subParts.push({ text: `${Math.round(rh)}% ${this.L('weather.rh')}`, entityId: this.config.humidity })
+    if (!isNaN(dp)) subParts.push({ text: html`${dp.toFixed(1)}° <abbr title=${this.L('weather.dp.full')}>${this.L('weather.dp')}</abbr>`, entityId: this.config.dewpoint })
+    if (!isNaN(rh)) subParts.push({ text: html`${Math.round(rh)}% <abbr title=${this.L('weather.rh.full')}>${this.L('weather.rh')}</abbr>`, entityId: this.config.humidity })
 
     return this.renderTile(
       this.config.temperature,
@@ -216,8 +216,11 @@ class WeatherStationCard extends LitElement {
     const e = polar(cx, cy, labelR, 0)
     const s = polar(cx, cy, labelR, 270)
     const w = polar(cx, cy, labelR, 180)
-    const arrowTipY = cy - r - 4
-    const arrowBackY = cy - r + 6
+    // Arrowhead sits on the ring and points inwards, toward where the wind blows.
+    const arrowTipY = cy - r + 10
+    const arrowBackY = cy - r - 6
+    const arrowNotchY = cy - r - 1
+    const arrowHalfWidth = 7
 
     const visual = svg`
       <circle cx="${cx}" cy="${cy}" r="${r}" class="compass-ring" />
@@ -228,7 +231,7 @@ class WeatherStationCard extends LitElement {
       <text x="${w.x}" y="${w.y + 3}" class="compass-label">W</text>
       ${!isNaN(bearing) ? svg`
         <g transform="rotate(${bearing} ${cx} ${cy})">
-          <path d="M ${cx} ${arrowTipY} L ${cx - 5} ${arrowBackY} L ${cx + 5} ${arrowBackY} Z" class="compass-arrow" />
+          <path d="M ${cx} ${arrowTipY} L ${cx + arrowHalfWidth} ${arrowBackY} L ${cx} ${arrowNotchY} L ${cx - arrowHalfWidth} ${arrowBackY} Z" class="compass-arrow" />
         </g>
       ` : ''}
     `
@@ -503,12 +506,15 @@ class WeatherStationCard extends LitElement {
       .tile-sub {
         font-size: 9.5px;
         color: var(--secondary-text-color);
-        text-transform: uppercase;
         margin-top: 2px;
         min-height: 12px;
       }
       .tile-sub-line {
         white-space: nowrap;
+      }
+      .tile-sub-line abbr {
+        text-decoration: none;
+        cursor: help;
       }
       .tile-sub-line.clickable {
         cursor: pointer;
