@@ -47,15 +47,22 @@ function polar(cx: number, cy: number, r: number, angleDeg: number) {
   return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) }
 }
 
-// Gauge angle sweeps from 180deg (left) down to 0deg (right), passing over the top.
-function gaugeAngle(ratio: number): number {
-  return 180 - 180 * ratio
+// Gauge markers are drawn at the arc's start (left end) and rotated about the
+// gauge centre, so a transition sweeps them along the arc instead of cutting
+// across it in a straight line. The gauge sweeps clockwise over the top.
+function gaugeMarkerStyle(cx: number, cy: number, ratio: number): string {
+  return `transform-origin: ${cx}px ${cy}px; transform: rotate(${180 * ratio}deg)`
 }
 
 function semicircleArcPath(cx: number, cy: number, r: number): string {
   const start = polar(cx, cy, r, 180)
   const end = polar(cx, cy, r, 0)
   return `M ${start.x} ${start.y} A ${r} ${r} 0 0 1 ${end.x} ${end.y}`
+}
+
+// Signed difference from `from` to `to` along the shortest arc, in [-180, 180).
+function shortestArcDelta(from: number, to: number): number {
+  return ((to - from) % 360 + 540) % 360 - 180
 }
 
 function compassAbbr(bearing: number): string {
@@ -75,6 +82,9 @@ function uvLevel(value: number, max: number): string {
 class WeatherStationCard extends LitElement {
   config!: WeatherStationCardConfig
   hass!: ExtendedHomeAssistant
+  // Unwrapped (not kept within 0-360) so the CSS rotation transition always
+  // takes the shortest way round, e.g. 10deg -> 350deg turns 20deg back past N.
+  private windArrowAngle?: number
 
   static getConfigElement() {
     return document.createElement("weather-station-card-editor")
@@ -164,8 +174,6 @@ class WeatherStationCard extends LitElement {
     const rh = this.config.humidity ? this.value(this.config.humidity) : NaN
 
     const cx = 50, cy = 58, r = 44
-    const tempPoint = polar(cx, cy, r, gaugeAngle(ratioOf(temp, min, max)))
-    const dpPoint = !isNaN(dp) ? polar(cx, cy, r, gaugeAngle(ratioOf(dp, min, max))) : null
 
     const visual = svg`
       <defs>
@@ -179,8 +187,8 @@ class WeatherStationCard extends LitElement {
         </linearGradient>
       </defs>
       <path d="${semicircleArcPath(cx, cy, r)}" fill="none" stroke="url(#tempGradient)" stroke-width="4" stroke-linecap="round" />
-      ${dpPoint ? svg`<circle cx="${dpPoint.x}" cy="${dpPoint.y}" r="4" fill="none" stroke="var(--card-background-color, #1c1c1c)" stroke-width="2" />` : ''}
-      ${!isNaN(temp) ? svg`<circle cx="${tempPoint.x}" cy="${tempPoint.y}" r="5.5" fill="#fff" stroke="var(--card-background-color, #1c1c1c)" stroke-width="2" />` : ''}
+      ${!isNaN(dp) ? svg`<circle cx="${cx - r}" cy="${cy}" r="4" fill="none" stroke="var(--card-background-color, #1c1c1c)" stroke-width="2" class="animated-rotation" style="${gaugeMarkerStyle(cx, cy, ratioOf(dp, min, max))}" />` : ''}
+      ${!isNaN(temp) ? svg`<circle cx="${cx - r}" cy="${cy}" r="5.5" fill="#fff" stroke="var(--card-background-color, #1c1c1c)" stroke-width="2" class="animated-rotation" style="${gaugeMarkerStyle(cx, cy, ratioOf(temp, min, max))}" />` : ''}
     `
 
     const subParts: SubLine[] = []
@@ -201,6 +209,11 @@ class WeatherStationCard extends LitElement {
     const speed = this.value(this.config.wind_speed)
     const gust = this.config.wind_gust ? this.value(this.config.wind_gust) : NaN
     const bearing = this.config.wind_bearing ? this.value(this.config.wind_bearing) : NaN
+    if (!isNaN(bearing)) {
+      this.windArrowAngle = this.windArrowAngle === undefined
+        ? bearing
+        : this.windArrowAngle + shortestArcDelta(this.windArrowAngle, bearing)
+    }
 
     const cx = 50, cy = 45, r = 36
     const ticks = []
@@ -230,7 +243,7 @@ class WeatherStationCard extends LitElement {
       <text x="${s.x}" y="${s.y + 3}" class="compass-label">S</text>
       <text x="${w.x}" y="${w.y + 3}" class="compass-label">W</text>
       ${!isNaN(bearing) ? svg`
-        <g transform="rotate(${bearing} ${cx} ${cy})">
+        <g class="animated-rotation" style="transform-origin: ${cx}px ${cy}px; transform: rotate(${this.windArrowAngle}deg)">
           <path d="M ${cx} ${arrowTipY} L ${cx + arrowHalfWidth} ${arrowBackY} L ${cx} ${arrowNotchY} L ${cx - arrowHalfWidth} ${arrowBackY} Z" class="compass-arrow" />
         </g>
       ` : ''}
@@ -263,16 +276,20 @@ class WeatherStationCard extends LitElement {
     const ratio = ratioOf(primaryValue, 0, max)
 
     const dropPath = "M50 6 C50 6 72 44 72 58 A22 22 0 1 1 28 58 C28 44 50 6 50 6 Z"
-    const fillY = 80 - ratio * 74
+    // The drop spans y 6..80; the fill is a full-height rect slid down by the
+    // empty fraction, clipped to the drop shape (the clip stays put on the <g>).
+    const emptyHeight = (1 - ratio) * 74
 
     const visual = svg`
       <defs>
         <clipPath id="dropClip">
-          <rect x="0" y="${fillY}" width="100" height="${80 - fillY}" />
+          <path d="${dropPath}" />
         </clipPath>
       </defs>
       <path d="${dropPath}" class="drop-outline" />
-      <path d="${dropPath}" class="drop-fill" clip-path="url(#dropClip)" />
+      <g clip-path="url(#dropClip)">
+        <rect x="0" y="6" width="100" height="74" class="drop-fill animated-transform" style="transform: translateY(${emptyHeight}px)" />
+      </g>
     `
 
     // The daily total's history is just a staircase, so clicking the tile opens the rate instead.
@@ -295,12 +312,11 @@ class WeatherStationCard extends LitElement {
 
     const cx = 50, cy = 58, r = 44
     const path = semicircleArcPath(cx, cy, r)
-    const point = polar(cx, cy, r, gaugeAngle(ratio))
 
     const visual = svg`
       <path d="${path}" fill="none" class="pressure-track" stroke-width="4" stroke-linecap="round" pathLength="100" />
-      <path d="${path}" fill="none" class="pressure-progress" stroke-width="4" stroke-linecap="round" pathLength="100" stroke-dasharray="${pct} 100" />
-      ${!isNaN(pressure) ? svg`<circle cx="${point.x}" cy="${point.y}" r="5" class="pressure-marker" />` : ''}
+      <path d="${path}" fill="none" class="pressure-progress" stroke-width="4" stroke-linecap="round" pathLength="100" style="stroke-dasharray: ${pct} 100" />
+      ${!isNaN(pressure) ? svg`<circle cx="${cx - r}" cy="${cy}" r="5" class="pressure-marker animated-rotation" style="${gaugeMarkerStyle(cx, cy, ratio)}" />` : ''}
     `
 
     return this.renderTile(
@@ -326,8 +342,8 @@ class WeatherStationCard extends LitElement {
         <rect
           x="10" y="${9 + i * bandHeight}" width="80" height="${bandHeight}"
           clip-path="url(#uvClip)"
-          fill="${filled ? color : 'var(--disabled-text-color)'}"
-          opacity="${filled ? 1 : 0.25}"
+          class="uv-band"
+          style="fill: ${filled ? color : 'var(--disabled-text-color)'}; opacity: ${filled ? 1 : 0.25}"
         />
       `
     })
@@ -355,15 +371,14 @@ class WeatherStationCard extends LitElement {
     const radiation = this.value(this.config.solar_radiation)
     const max = this.config.solar_radiation_max ?? 1000
     const ratio = ratioOf(radiation, 0, max)
-    const sunR = ratio * 40
     const color = ratio < 0.5
       ? `color-mix(in srgb, #fde68a ${100 - ratio * 200}%, #f97316 ${ratio * 200}%)`
       : `color-mix(in srgb, #f97316 ${100 - (ratio - 0.5) * 200}%, #dc2626 ${(ratio - 0.5) * 200}%)`
 
     const visual = svg`
       <circle cx="50" cy="45" r="40" class="radiation-ring" />
-      ${!isNaN(radiation) && sunR > 0 ? svg`
-        <circle cx="50" cy="45" r="${sunR}" fill="${color}" />
+      ${!isNaN(radiation) ? svg`
+        <circle cx="50" cy="45" r="40" class="radiation-sun" style="fill: ${color}; transform: scale(${ratio})" />
       ` : ''}
     `
 
@@ -567,6 +582,29 @@ class WeatherStationCard extends LitElement {
       .radiation-ring {
         fill: var(--disabled-text-color);
         opacity: 0.12;
+      }
+      .radiation-sun {
+        transform-origin: 50px 45px;
+        transition: transform 0.8s ease-in-out, fill 0.8s ease-in-out;
+      }
+      .animated-rotation,
+      .animated-transform {
+        transition: transform 0.8s ease-in-out;
+      }
+      .pressure-progress {
+        transition: stroke-dasharray 0.8s ease-in-out;
+      }
+      .uv-band {
+        transition: fill 0.4s ease-in-out, opacity 0.4s ease-in-out;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .radiation-sun,
+        .animated-rotation,
+        .animated-transform,
+        .pressure-progress,
+        .uv-band {
+          transition: none;
+        }
       }
     `
   }
