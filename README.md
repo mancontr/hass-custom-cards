@@ -3,7 +3,7 @@
 A small collection of varied custom cards, grouped together for convenience and size.
 
 ![Screenshot of the sprinklers card](./docs/sprinklers-card.png)
-![Screenshot of the temperature humidity card](./docs/temperature-humidity-card.png)
+![Screenshot of the weather station card](./docs/weather-station-card.png)
 
 ## Setup
 
