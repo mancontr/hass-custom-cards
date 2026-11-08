@@ -24,6 +24,9 @@ const THEMES: Record<string, Record<string, string>> = {
     "--primary-color": "#58a6ff",
     "--text-primary-color": "#ffffff",
     "--error-color": "#ef5350",
+    // HA's fixed toolbar height (sticky elements stay below it); there's no
+    // toolbar here, so they should stick to the very top instead.
+    "--header-height": "0px",
     "--ha-card-border-color": "rgba(255, 255, 255, 0.12)",
     "--paper-item-icon-color": "#a1a1a1",
     "--scrollbar-thumb-color": "#555",
@@ -47,6 +50,9 @@ const THEMES: Record<string, Record<string, string>> = {
     "--primary-color": "#1a73e8",
     "--text-primary-color": "#ffffff",
     "--error-color": "#db4437",
+    // HA's fixed toolbar height (sticky elements stay below it); there's no
+    // toolbar here, so they should stick to the very top instead.
+    "--header-height": "0px",
     "--ha-card-border-color": "rgba(0, 0, 0, 0.12)",
     "--paper-item-icon-color": "#44739e",
     "--scrollbar-thumb-color": "#ccc",

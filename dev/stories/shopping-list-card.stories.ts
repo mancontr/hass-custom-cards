@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/web-components-vite"
-import { renderCardEl } from "../story-helpers"
+import { renderCardEl, FULL_COLUMN_WIDTH } from "../story-helpers"
 
 interface Args {
   title: string
+  showTitle: boolean
+  panel: boolean
+  completedCollapsed: boolean
   language: "en" | "es"
   pending: string
   completed: string
@@ -82,6 +85,8 @@ function mockTodo(pending: string[], completed: string[]) {
 const meta: Meta<Args> = {
   title: "Cards/Shopping List",
   argTypes: {
+    completedCollapsed: { control: "boolean", description: "Whether the completed section starts folded (the card remembers it per device in localStorage; this overrides it on every render)" },
+    panel: { control: "boolean", description: "Fill the whole canvas, like the only card in a panel view, instead of HA's usual column width" },
     language: { control: { type: "radio" }, options: ["en", "es"] },
     pending: { control: "text", description: "Comma separated pending items, as \"Name\" or \"Name: description\" (in any order, the card sorts them)" },
     completed: { control: "text", description: "Comma separated completed items, same format as pending" },
@@ -89,6 +94,9 @@ const meta: Meta<Args> = {
   },
   args: {
     title: "",
+    showTitle: true,
+    panel: false,
+    completedCollapsed: false,
     language: "en",
     pending: "Milk: lactose-free (2 cartons), Bread, Eggs, Apples: Golden or Fuji",
     completed: "Rice, Butter, Coffee: ground decaf, Lettuce, Lemons: organic, Olive oil, Tomatoes, Yogurt, Bananas, Pickles: the small jar",
@@ -101,13 +109,20 @@ const meta: Meta<Args> = {
     const config = {
       entity: ENTITY,
       title: args.title || undefined,
+      show_title: args.showTitle,
     }
     const extraHass = {
       language: args.language,
       selectedLanguage: args.language,
       ...mockTodo(parseList(args.pending), parseList(args.completed)),
     }
-    const wrapper = renderCardEl("shopping-list-card", states, config, undefined, extraHass)
+    // The card reads this on setConfig; set it first so every render starts
+    // from the arg, not from whatever was left over from a previous story.
+    const collapsedKey = `shopping-list-card:collapsed:${ENTITY}`
+    if (args.completedCollapsed) localStorage.setItem(collapsedKey, "1")
+    else localStorage.removeItem(collapsedKey)
+    const maxWidth = args.panel ? Number.MAX_SAFE_INTEGER : FULL_COLUMN_WIDTH
+    const wrapper = renderCardEl("shopping-list-card", states, config, maxWidth, extraHass)
     const card = wrapper.querySelector("shopping-list-card") as HTMLElement & { query: string }
     card.query = args.search
     return wrapper
@@ -137,5 +152,17 @@ export const Spanish: Story = {
     search: "",
   },
 }
+
+// Without the title, e.g. for a panel view, where HA already shows the
+// view's name right above the card.
+export const NoTitle: Story = { args: { showTitle: false } }
+
+// As the only card of a panel view: the content keeps a readable width,
+// centered, instead of stretching across the whole screen.
+export const Panel: Story = { args: { showTitle: false, panel: true } }
+
+// Completed items folded away: still reachable from the search box, with
+// their count in the section header.
+export const CompletedCollapsed: Story = { args: { completedCollapsed: true } }
 
 export const Empty: Story = { args: { pending: "", completed: "" } }

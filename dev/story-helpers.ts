@@ -31,7 +31,10 @@ function createCardShell(
   const shell = document.createElement("div")
   shell.style.background = "var(--card-background-color)"
   shell.style.borderRadius = "12px"
-  shell.style.overflow = "hidden"
+  // "clip" rather than "hidden": both round off the corners, but "hidden"
+  // makes this a scroll container, silently breaking position: sticky inside
+  // the card (shopping-list-card's search box).
+  shell.style.overflow = "clip"
   shell.style.border = "1px solid var(--ha-card-border-color, rgba(255, 255, 255, 0.12))"
 
   const el = document.createElement(tag) as HTMLElement & {

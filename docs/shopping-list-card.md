@@ -23,6 +23,7 @@ A comprehensive list of available options is provided below:
 |----------------|----------|-------------|
 | entity         | Yes      | The to-do list entity to show. |
 | title          | No       | Card title override. |
+| show_title     | No       | Set to `false` to hide the title, e.g. in a panel view. Defaults to `true`. |
 
 ## Usage
 
@@ -40,5 +41,11 @@ Searching ignores case and accents, so typing "azucar" finds "Azúcar".
 
 Pressing Enter picks the first option (the first matching item, or adding a new one if nothing matches),
 and Escape clears the search box.
+
+Click the "Completed" header to fold the completed items away (or show them again): they can still be found through
+the search box. This choice is remembered on each device, so you can keep them folded on your phone but visible on a big screen.
+
+The search box stays visible at the top while scrolling down a long list.
+On very wide cards, such as the only card in a panel view, the content keeps a readable width and is centered.
 
 Changes are synced live, so updates made from other devices or from Home Assistant's own to-do panel show up immediately.

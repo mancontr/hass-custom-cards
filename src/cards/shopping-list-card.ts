@@ -5,6 +5,7 @@ import { ExtendedHomeAssistant } from "../types"
 interface ShoppingListCardConfig {
   entity: string
   title?: string
+  show_title?: boolean
 }
 
 type TodoStatus = "needs_action" | "completed"
@@ -18,6 +19,29 @@ interface TodoItem {
 
 // TodoListEntityFeature.SET_DESCRIPTION_ON_ITEM in Home Assistant.
 const SET_DESCRIPTION_ON_ITEM = 64
+
+// Per device (and per list) memory of whether the completed items are
+// folded away, so a phone and a desktop panel can each keep their own.
+function collapsedKey(entityId: string) {
+  return `shopping-list-card:collapsed:${entityId}`
+}
+
+function loadCollapsed(entityId: string): boolean {
+  try {
+    return localStorage.getItem(collapsedKey(entityId)) === "1"
+  } catch {
+    return false
+  }
+}
+
+function saveCollapsed(entityId: string, collapsed: boolean) {
+  try {
+    if (collapsed) localStorage.setItem(collapsedKey(entityId), "1")
+    else localStorage.removeItem(collapsedKey(entityId))
+  } catch {
+    // Storage unavailable (e.g. private mode): it just won't be remembered.
+  }
+}
 
 // Max number of suggestions shown under the search box, to keep it compact
 // even when typing a single letter against a long list of completed items.
@@ -36,6 +60,7 @@ class ShoppingListCard extends LitElement {
   editing: TodoItem | null
   editSummary: string
   editDescription: string
+  completedCollapsed: boolean
   private unsubPromise?: Promise<() => void>
 
   static getConfigElement() {
@@ -57,6 +82,7 @@ class ShoppingListCard extends LitElement {
       editing: { state: true },
       editSummary: { state: true },
       editDescription: { state: true },
+      completedCollapsed: { state: true },
     }
   }
 
@@ -67,6 +93,7 @@ class ShoppingListCard extends LitElement {
     this.editing = null
     this.editSummary = ""
     this.editDescription = ""
+    this.completedCollapsed = false
   }
 
   setConfig(config: ShoppingListCardConfig) {
@@ -76,6 +103,7 @@ class ShoppingListCard extends LitElement {
       this.items = null
     }
     this.config = config
+    this.completedCollapsed = loadCollapsed(config.entity)
   }
 
   connectedCallback() {
@@ -138,37 +166,44 @@ class ShoppingListCard extends LitElement {
 
     return html`
       <ha-card>
-        <header>
-          <h1>${title}</h1>
-        </header>
-        <div class="search">
-          <div class="search-box">
-            <ha-icon icon="mdi:magnify"></ha-icon>
-            <input
-              type="text"
-              enterkeyhint="done"
-              autocomplete="off"
-              .value=${this.query}
-              placeholder=${this.L("shopping.search")}
-              @input=${this.queryChanged}
-              @keydown=${this.queryKeyDown}
-            />
-            ${this.query ? html`
-              <ha-icon class="clear" icon="mdi:close" @click=${this.clearQuery}></ha-icon>
-            ` : null}
+        <div class="content">
+          ${this.config.show_title !== false ? html`
+            <header>
+              <h1>${title}</h1>
+            </header>
+          ` : null}
+          <div class="search">
+            <div class="search-box">
+              <ha-icon icon="mdi:magnify"></ha-icon>
+              <input
+                type="text"
+                enterkeyhint="done"
+                autocomplete="off"
+                .value=${this.query}
+                placeholder=${this.L("shopping.search")}
+                @input=${this.queryChanged}
+                @keydown=${this.queryKeyDown}
+              />
+              ${this.query ? html`
+                <ha-icon class="clear" icon="mdi:close" @click=${this.clearQuery}></ha-icon>
+              ` : null}
+            </div>
+            ${this.query.trim() ? this.renderSuggestions(items, completed) : null}
           </div>
-          ${this.query.trim() ? this.renderSuggestions(items, completed) : null}
+          <main>
+            ${this.items && !items.length ? html`
+              <div class="empty">${this.L("shopping.empty")}</div>
+            ` : null}
+            ${pending.map(item => this.renderItem(item))}
+            ${completed.length ? html`
+              <div class="section-title" role="button" @click=${this.toggleCompleted}>
+                <span>${this.L("shopping.completed")} · ${completed.length}</span>
+                <ha-icon icon=${this.completedCollapsed ? "mdi:chevron-down" : "mdi:chevron-up"}></ha-icon>
+              </div>
+            ` : null}
+            ${this.completedCollapsed ? null : completed.map(item => this.renderItem(item))}
+          </main>
         </div>
-        <main>
-          ${this.items && !items.length ? html`
-            <div class="empty">${this.L("shopping.empty")}</div>
-          ` : null}
-          ${pending.map(item => this.renderItem(item))}
-          ${completed.length ? html`
-            <div class="section-title">${this.L("shopping.completed")}</div>
-          ` : null}
-          ${completed.map(item => this.renderItem(item))}
-        </main>
         ${this.editing ? this.renderEditor() : null}
       </ha-card>
     `
@@ -277,6 +312,11 @@ class ShoppingListCard extends LitElement {
     `
   }
 
+  toggleCompleted() {
+    this.completedCollapsed = !this.completedCollapsed
+    saveCollapsed(this.config.entity, this.completedCollapsed)
+  }
+
   openEditor(ev: Event, item: TodoItem) {
     ev.stopPropagation()
     this.editing = item
@@ -382,6 +422,12 @@ class ShoppingListCard extends LitElement {
       ha-card {
         color: var(--primary-text-color,inherit);
       }
+      /* Keeps the content readable on very wide cards (e.g. a panel view),
+         where the edit icons would end up far away from their items. */
+      .content {
+        max-width: 700px;
+        margin: 0 auto;
+      }
       header {
         padding: 22px 16px 0;
       }
@@ -394,8 +440,14 @@ class ShoppingListCard extends LitElement {
         font-weight: 400;
         margin: 0;
       }
+      /* Stays in view while scrolling down a long list. HA's toolbar is fixed
+         on top of the scrolling page, hence the offset. */
       .search {
-        padding: 16px 16px 0;
+        position: sticky;
+        top: calc(var(--header-height, 56px) + var(--safe-area-inset-top, 0px));
+        z-index: 1;
+        background: var(--ha-card-background, var(--card-background-color, white));
+        padding: 16px 16px 8px;
       }
       .search-box {
         display: flex;
@@ -452,15 +504,30 @@ class ShoppingListCard extends LitElement {
         background: none;
       }
       main {
-        padding: 8px 16px 16px;
+        padding: 0 16px 16px;
       }
       .item {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 6px 0;
+        /* Bleeds into main's padding so the hover background has some room
+           around the content, while keeping it aligned with the rest. */
+        padding: 6px 8px;
+        margin: 0 -8px;
+        border-radius: 8px;
         cursor: pointer;
         --mdc-icon-size: 22px;
+      }
+      /* Only on devices with a real pointer: on touch screens :hover sticks
+         to the last tapped row. Mostly useful on wide cards (e.g. a panel
+         view), where the edit icon is far from the item's name. */
+      @media (hover: hover) {
+        .item:hover {
+          background-color: var(--secondary-background-color);
+        }
+        .item:hover .edit {
+          color: var(--secondary-text-color);
+        }
       }
       .item ha-icon {
         color: var(--paper-item-icon-color);
@@ -554,13 +621,27 @@ class ShoppingListCard extends LitElement {
         cursor: default;
       }
       .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         border-top: 1px solid var(--divider-color);
         color: var(--secondary-text-color);
+        cursor: pointer;
         font-size: 12px;
         font-weight: 500;
         margin-top: 8px;
-        padding: 12px 0 4px;
+        padding: 8px 0 4px;
         text-transform: uppercase;
+        --mdc-icon-size: 20px;
+      }
+      .section-title ha-icon {
+        /* Lines up with the edit icons on the items below. */
+        margin-right: -1px;
+      }
+      @media (hover: hover) {
+        .section-title:hover {
+          color: var(--primary-text-color);
+        }
       }
       main > .section-title:first-child {
         border-top: none;
