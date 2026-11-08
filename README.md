@@ -16,6 +16,7 @@ We recommend using HACS:
 Check the details for each specific card:
 
 - [Events Card](./docs/events-card.md): Show binary sensor activity without clutter
+- [Shopping List Card](./docs/shopping-list-card.md): A quick shopping list, always sorted, with search to re-add items in a click
 - [Sprinklers Card](./docs/sprinklers-card.md): Manage your EspHome Sprinklers system
 - [Temperature Humidity Card](./docs/temperature-humidity-card.md): Show temperature and humidity in a single card
 - [Top Power Card](./docs/top-power-card.md): Show power consumption, sorting by value, to see the biggest consumers at a glance
