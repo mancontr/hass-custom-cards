@@ -10,7 +10,7 @@ dry the room out, make it more humid, or make no real difference.
 
 ## Configuration
 
-To add the card into your panel, add a custom YAML card of type `custom:temperature-humidity-card`.
+Add it to your dashboard from the card picker and set it up with the visual editor, or use a YAML card of type `custom:temperature-humidity-card`.
 
 Example configuration:
 

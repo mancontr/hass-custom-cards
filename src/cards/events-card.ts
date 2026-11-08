@@ -1,6 +1,7 @@
 import { html, css, LitElement } from "lit"
 import L from "../intl"
 import { EntityHistoryEntry, ExtendedHomeAssistant } from "../types"
+import { findEntities, formTexts, label, registerCard } from "../editor"
 
 interface EventsCardConfig {
   title?: string
@@ -38,13 +39,45 @@ class EventsCard extends LitElement {
   events!: EventInfo[]
   expandedGroupTs?: number
 
-  static getConfigElement() {
-    return document.createElement("events-card-editor")
+  private fetchId = 0
+
+  static getConfigForm() {
+    const text = (name: string) => label("events.editor", name)
+    return {
+      schema: [
+        { name: "title", selector: { text: {} } },
+        {
+          name: "entities",
+          required: true,
+          selector: {
+            object: {
+              multiple: true,
+              label_field: "entity",
+              fields: {
+                entity: { label: text("entity"), required: true, selector: { entity: { filter: { domain: "binary_sensor" } } } },
+                name: { label: text("name"), selector: { text: {} } },
+                icon: { label: text("icon"), selector: { icon: {} } },
+                group: { label: text("group"), selector: { text: {} } },
+              },
+            },
+          },
+        },
+      ],
+      // The object selector only handles `- entity: ...` entries, not the
+      // shorthand of a bare entity id: those configs stay YAML-only.
+      assertConfig: (config: EventsCardConfig) => {
+        if ((config.entities || []).some(e => typeof e === "string")) {
+          throw new Error(text("string_entities"))
+        }
+      },
+      ...formTexts("events.editor"),
+    }
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass: ExtendedHomeAssistant, unused?: string[]) {
+    const entities = findEntities(hass, unused, "binary_sensor", ["motion", "occupancy", "door"], 3)
     return {
-      // ...
+      entities: entities.map(entity => ({ entity })),
     }
   }
 
@@ -65,13 +98,17 @@ class EventsCard extends LitElement {
   setConfig(config: EventsCardConfig) {
     this.config = config
     this.entityConfig = new Map<string, EntityDetails>()
-    this.config.entities.forEach(e => {
+    // Tolerates a half-filled config (as while editing it).
+    ;(this.config.entities || []).filter(Boolean).forEach(e => {
       if (typeof e === 'string') {
         this.entityConfig.set(e, { entity: e })
-      } else {
+      } else if (e.entity) {
         this.entityConfig.set(e.entity, e)
       }
     })
+    // HA reuses the element when the config changes (e.g. live in the
+    // editor's preview), so the events must be fetched again.
+    if (this.hasUpdated) this.fetchEvents()
   }
 
   L(key: string, params?: { [k: string]: string | number }): string {
@@ -82,20 +119,37 @@ class EventsCard extends LitElement {
     return this.hass.locale?.language || this.hass.language || 'en'
   }
 
-  async firstUpdated() {
-    const ids = this.config?.entities.map(e => typeof e === 'string' ? e : e.entity)
+  firstUpdated() {
+    this.fetchEvents()
+  }
+
+  async fetchEvents() {
+    // Only the latest fetch wins, if several overlap (e.g. while typing).
+    const fetchId = ++this.fetchId
+    const ids = [...this.entityConfig.keys()]
+    if (!ids.length) {
+      this.events = []
+      return
+    }
     const start = new Date()
     start.setDate(start.getDate() - 1) // 1 day of activity
     // Get the events
-    const rawEvents: {[x: string]: RawEventInfo[]} = await this.hass.callWS({
-      type: 'history/history_during_period',
-      entity_ids: ids,
-      start_time: start.toISOString(),
-      end_time: new Date().toISOString(),
-      minimal_response: true,
-      no_attributes: true,
-      significant_changes_only: true,
-    }) || {}
+    let rawEvents: {[x: string]: RawEventInfo[]}
+    try {
+      rawEvents = await this.hass.callWS<{[x: string]: RawEventInfo[]}>({
+        type: 'history/history_during_period',
+        entity_ids: ids,
+        start_time: start.toISOString(),
+        end_time: new Date().toISOString(),
+        minimal_response: true,
+        no_attributes: true,
+        significant_changes_only: true,
+      }) || {}
+    } catch (err) {
+      console.warn('Events: could not fetch history:', err)
+      return
+    }
+    if (fetchId !== this.fetchId) return
     // Merge all events together and sort by date
     const events: EventInfo[] = []
     ids.forEach(id => {
@@ -121,8 +175,7 @@ class EventsCard extends LitElement {
       }
       // Can be grouped?
       const groupingRange = 300 // TODO: Configurable?
-      const entityCfg = this.entityConfig.get(evt.entityId)!
-      const group = entityCfg.group
+      const group = this.entityConfig.get(evt.entityId)?.group
       if (group) {
         const lastEvtGroup = groupEvt.get(group)
         const canGroup = lastEvtGroup !== undefined
@@ -163,8 +216,8 @@ class EventsCard extends LitElement {
 
   renderEvent(event: EventInfo, prevEvent?: EventInfo) {
     const entity = this.hass.entities[event.entityId]
-    const opts = this.entityConfig.get(event.entityId)!
-    const name = opts.name || entity.name
+    const opts = this.entityConfig.get(event.entityId) || { entity: event.entityId }
+    const name = opts.name || entity?.name || event.entityId
     const icon = opts.icon || 'mdi:motion-sensor'
 
     const fullTs = event.date.toLocaleString()
@@ -206,8 +259,8 @@ class EventsCard extends LitElement {
 
   renderSubEvent(event: EventInfo) {
     const entity = this.hass.entities[event.entityId]
-    const opts = this.entityConfig.get(event.entityId)!
-    const name = opts.name || entity.name
+    const opts = this.entityConfig.get(event.entityId) || { entity: event.entityId }
+    const name = opts.name || entity?.name || event.entityId
     const icon = opts.icon || 'mdi:motion-sensor'
 
     const fullTs = event.date.toLocaleString()
@@ -324,3 +377,4 @@ class EventsCard extends LitElement {
 }
 
 customElements.define("events-card", EventsCard)
+registerCard("events-card", "Events Card", "Recent activity of binary sensors, grouping events close in time.")

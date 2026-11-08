@@ -1,6 +1,7 @@
 import { html, css, LitElement } from "lit"
 import L from "../intl"
 import { EntityHistoryEntry, ExtendedHomeAssistant } from "../types"
+import { formTexts, label, registerCard } from "../editor"
 
 interface SprinklersCardConfig {
   title?: string
@@ -29,13 +30,51 @@ class SprinklersCard extends LitElement {
   config!: SprinklersCardConfig
   hass!: ExtendedHomeAssistant
 
-  static getConfigElement() {
-    return document.createElement("sprinklers-card-editor")
+  static getConfigForm() {
+    const text = (name: string) => label("sprinklers.editor", name)
+    // ESPHome creates switch and number entities, but helpers work as well.
+    const switchSelector = { entity: { filter: [{ domain: "switch" }, { domain: "input_boolean" }] } }
+    const numberSelector = { entity: { filter: [{ domain: "number" }, { domain: "input_number" }] } }
+    return {
+      schema: [
+        { name: "title", selector: { text: {} } },
+        {
+          type: "expandable",
+          name: "general",
+          expanded: true,
+          schema: [
+            { name: "switch", required: true, selector: switchSelector },
+            { name: "multi", selector: numberSelector },
+          ],
+        },
+        {
+          name: "valves",
+          required: true,
+          selector: {
+            object: {
+              multiple: true,
+              label_field: "switch",
+              fields: {
+                name: { label: text("valve_name"), selector: { text: {} } },
+                switch: { label: text("valve_switch"), required: true, selector: switchSelector },
+                enabled: { label: text("valve_enabled"), required: true, selector: switchSelector },
+                duration: { label: text("valve_duration"), required: true, selector: numberSelector },
+              },
+            },
+          },
+        },
+        { name: "colTitles", selector: { text: { multiple: true } } },
+      ],
+      ...formTexts("sprinklers.editor"),
+    }
   }
 
+  // There's no way to guess the sprinkler entities, so the stub is just the
+  // shape to fill.
   static getStubConfig() {
     return {
-      // ...
+      general: { switch: "" },
+      valves: [],
     }
   }
 
@@ -55,10 +94,19 @@ class SprinklersCard extends LitElement {
   }
 
   setConfig(config: SprinklersCardConfig) {
+    const switchChanged = this.config?.general?.switch !== config.general?.switch
     this.config = config
+    // HA reuses the element when the config changes (e.g. live in the
+    // editor's preview), so a new main switch needs its history fetched.
+    if (this.hasUpdated && switchChanged) this.fetchMainLastOn()
   }
 
   firstUpdated() {
+    this.fetchMainLastOn()
+  }
+
+  fetchMainLastOn() {
+    if (!this.config.general?.switch) return
     this.getSwitchLastOn([this.config.general.switch])
       .catch(err => {
         console.warn('Sprinklers: could not fetch main switch history:', err)
@@ -117,7 +165,7 @@ class SprinklersCard extends LitElement {
   render() {
     if (!this.hass || !this.config) return html``
 
-    const mainState = this.hass.states[this.config.general.switch]
+    const mainState = this.hass.states[this.config.general?.switch]
     if (!mainState) return html``
 
     const title = this.config.title || this.L('sprinklers.title')
@@ -147,7 +195,7 @@ class SprinklersCard extends LitElement {
   }
 
   renderDetailsActive() {
-    const current = this.config.valves.find(valve => this.hass.states[valve.switch].state === 'on')
+    const current = (this.config.valves || []).find(valve => this.hass.states[valve.switch]?.state === 'on')
     return html`
       <div class="details-row current">
         <div class="details-title">${this.L('sprinklers.watering')}</div>
@@ -184,11 +232,11 @@ class SprinklersCard extends LitElement {
             </tr>
           </thead>
           <tbody>
-            ${this.config.valves.map(valve => html`
+            ${(this.config.valves || []).map(valve => html`
               <tr>
-                <td>${valve.name || this.hass.entities[valve.switch].name}</td>
+                <td>${valve.name || this.hass.entities[valve.switch]?.name || valve.switch}</td>
                 <td><ha-entity-toggle .hass=${this.hass} .stateObj=${this.hass.states[valve.enabled]} /></td>
-                <td><input type="number" disabled value=${parseInt(this.hass.states[valve.duration].state)} /></td>
+                <td><input type="number" disabled value=${parseInt(this.hass.states[valve.duration]?.state)} /></td>
                 <td><ha-entity-toggle .hass=${this.hass} .stateObj=${this.hass.states[valve.switch]} /></td>
                 <td><ha-relative-time .hass=${this.hass} .datetime=${this.lastOn[valve.switch]} /></td>
               </tr>
@@ -207,7 +255,7 @@ class SprinklersCard extends LitElement {
 
   settingsClicked() {
     this.showModal = true
-    this.getSwitchLastOn(this.config.valves.map(valve => valve.switch))
+    this.getSwitchLastOn((this.config.valves || []).map(valve => valve.switch))
   }
 
   settingsClosed() {
@@ -280,3 +328,4 @@ class SprinklersCard extends LitElement {
 }
 
 customElements.define("sprinklers-card", SprinklersCard)
+registerCard("sprinklers-card", "Sprinklers Card", "Manage an ESPHome sprinkler controller.", false)

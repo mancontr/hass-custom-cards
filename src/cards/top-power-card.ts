@@ -1,10 +1,11 @@
 import { html, css, LitElement } from "lit"
 import L from "../intl"
 import { ExtendedHomeAssistant } from "../types"
+import { findEntities, formTexts, label, numberSelector, registerCard, sensorSelector } from "../editor"
 
 interface TopPowerCardConfig {
-  total: CircuitEntry
-  circuits: CircuitEntry[]
+  total?: CircuitEntry
+  circuits?: CircuitEntry[]
   title?: string
   limit?: number
   idle_threshold?: number
@@ -22,13 +23,56 @@ class TopPowerCard extends LitElement {
   config!: TopPowerCardConfig
   hass!: ExtendedHomeAssistant
 
-  static getConfigElement() {
-    return document.createElement("top-power-card-editor")
+  static getConfigForm() {
+    const text = (name: string) => label("power.editor", name)
+    return {
+      schema: [
+        { name: "title", selector: { text: {} } },
+        {
+          type: "expandable",
+          name: "total",
+          schema: [
+            { name: "entity", required: true, selector: sensorSelector("power") },
+            { name: "name", selector: { text: {} } },
+          ],
+        },
+        // Each circuit is edited in its own dialog. If this HA version can't
+        // do that, the object selector falls back to a YAML box for the list.
+        {
+          name: "circuits",
+          required: true,
+          selector: {
+            object: {
+              multiple: true,
+              label_field: "entity",
+              fields: {
+                entity: { label: text("entity"), required: true, selector: sensorSelector("power") },
+                name: { label: text("name"), selector: { text: {} } },
+                idle_threshold: { label: text("idle_threshold"), selector: numberSelector({ min: 0 }) },
+                high_threshold: { label: text("high_threshold"), selector: numberSelector({ min: 0 }) },
+              },
+            },
+          },
+        },
+        {
+          type: "grid",
+          name: "",
+          schema: [
+            { name: "limit", selector: numberSelector({ min: 0 }) },
+            { name: "idle_threshold", selector: numberSelector({ min: 0 }) },
+            { name: "high_threshold", selector: numberSelector({ min: 0 }) },
+          ],
+        },
+      ],
+      ...formTexts("power.editor"),
+    }
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass: ExtendedHomeAssistant, unused?: string[]) {
+    const [total, ...circuits] = findEntities(hass, unused, "sensor", ["power"], 4)
     return {
-      // ...
+      total: { entity: total || "" },
+      circuits: circuits.map(entity => ({ entity })),
     }
   }
 
@@ -56,9 +100,10 @@ class TopPowerCard extends LitElement {
 
     const title = this.config.title || this.L('power.title')
 
-    const entries = this.config.circuits.map(device => ({
+    // Tolerates a half-filled config (as while editing it in the UI).
+    const entries = (this.config.circuits || []).filter(device => device?.entity).map(device => ({
       device,
-      value: parseFloat(this.hass.states[device.entity].state)
+      value: parseFloat(this.hass.states[device.entity]?.state)
     }))
     entries.sort((a, b) => a.value > b.value ? -1 : 1)
     const limit = this.config.limit
@@ -74,7 +119,7 @@ class TopPowerCard extends LitElement {
           </h1>
         </header>
         <main>
-          ${this.renderEntry(this.config.total, true)}
+          ${this.config.total?.entity ? this.renderEntry(this.config.total, true) : null}
           ${entries.map(e => this.renderEntry(e.device))}
         </main>
       </ha-card>
@@ -83,8 +128,8 @@ class TopPowerCard extends LitElement {
 
   renderEntry(device: CircuitEntry, isTotal?: boolean) {
     const state = this.hass.states[device.entity]
-    const name = device.name || this.hass.entities[device.entity].name || state.attributes?.friendly_name || device
-    const value = parseFloat(state.state)
+    const name = device.name || this.hass.entities[device.entity]?.name || state?.attributes?.friendly_name || device.entity
+    const value = parseFloat(state?.state)
     let status = 'normal'
     const idleThreshold = device.idle_threshold || this.config.idle_threshold || 5
     const highThreshold = device.high_threshold || this.config.high_threshold || 300
@@ -170,3 +215,4 @@ class TopPowerCard extends LitElement {
 }
 
 customElements.define("top-power-card", TopPowerCard)
+registerCard("top-power-card", "Top Power Card", "Power consumption per circuit, sorted to show the biggest consumers at a glance.")

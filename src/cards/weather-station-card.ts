@@ -1,6 +1,7 @@
 import { html, css, svg, LitElement, TemplateResult } from "lit"
 import L from "../intl"
 import { ExtendedHomeAssistant } from "../types"
+import { findEntities, FormSchema, formTexts, numberSelector, registerCard, sensorSelector } from "../editor"
 
 interface WeatherStationCardConfig {
   title?: string
@@ -86,14 +87,67 @@ class WeatherStationCard extends LitElement {
   // takes the shortest way round, e.g. 10deg -> 350deg turns 20deg back past N.
   private windArrowAngle?: number
 
-  static getConfigElement() {
-    return document.createElement("weather-station-card-editor")
+  static getConfigForm() {
+    // One collapsible section per tile, all saved flat in the card config.
+    const section = (name: string, schema: FormSchema[]) => ({ type: "expandable", name, flatten: true, schema })
+    const pair = (schema: FormSchema[]) => ({ type: "grid", name: "", schema })
+    return {
+      schema: [
+        { name: "title", selector: { text: {} } },
+        section("section_temperature", [
+          { name: "temperature", selector: sensorSelector("temperature") },
+          pair([
+            { name: "dewpoint", selector: sensorSelector("temperature") },
+            { name: "humidity", selector: sensorSelector("humidity") },
+            { name: "temperature_min", selector: numberSelector() },
+            { name: "temperature_max", selector: numberSelector() },
+          ]),
+        ]),
+        section("section_wind", [
+          { name: "wind_speed", selector: sensorSelector("wind_speed") },
+          pair([
+            { name: "wind_gust", selector: sensorSelector("wind_speed") },
+            { name: "wind_bearing", selector: sensorSelector() },
+          ]),
+        ]),
+        section("section_precipitation", [
+          pair([
+            { name: "precipitation_today", selector: sensorSelector("precipitation") },
+            { name: "precipitation_rate", selector: sensorSelector("precipitation_intensity") },
+          ]),
+          { name: "precipitation_today_max", selector: numberSelector({ min: 0 }) },
+        ]),
+        section("section_pressure", [
+          { name: "pressure", selector: sensorSelector("atmospheric_pressure", "pressure") },
+          pair([
+            { name: "pressure_min", selector: numberSelector() },
+            { name: "pressure_max", selector: numberSelector() },
+          ]),
+        ]),
+        section("section_sun", [
+          pair([
+            { name: "uv", selector: sensorSelector() },
+            { name: "uv_max", selector: numberSelector({ min: 0 }) },
+            { name: "solar_radiation", selector: sensorSelector("irradiance") },
+            { name: "solar_radiation_max", selector: numberSelector({ min: 0 }) },
+          ]),
+        ]),
+      ],
+      ...formTexts("weather.editor"),
+    }
   }
 
-  static getStubConfig() {
-    return {
-      // ...
+  // Only the sensors that can be reliably told apart by device class.
+  static getStubConfig(hass: ExtendedHomeAssistant, unused?: string[]) {
+    const find = (...deviceClasses: string[]) => findEntities(hass, unused, "sensor", deviceClasses)[0]
+    const config = {
+      temperature: find("temperature"),
+      humidity: find("humidity"),
+      wind_speed: find("wind_speed"),
+      precipitation_today: find("precipitation"),
+      pressure: find("atmospheric_pressure", "pressure"),
     }
+    return Object.fromEntries(Object.entries(config).filter(([, v]) => v))
   }
 
   static get properties() {
@@ -612,3 +666,4 @@ class WeatherStationCard extends LitElement {
 }
 
 customElements.define("weather-station-card", WeatherStationCard)
+registerCard("weather-station-card", "Weather Station Card", "Summary of a personal weather station: temperature, wind, rain, pressure, UV and radiation.")

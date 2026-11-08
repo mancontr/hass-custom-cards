@@ -6,7 +6,7 @@ A custom card to show the top power consumption from a list of meters.
 
 ## Configuration
 
-To add the card into your panel, add a custom YAML card of type `custom:top-power-card`.
+Add it to your dashboard from the card picker and set it up with the visual editor, or use a YAML card of type `custom:top-power-card`.
 
 Example configuration:
 

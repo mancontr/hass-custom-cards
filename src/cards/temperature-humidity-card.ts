@@ -1,6 +1,7 @@
 import { html, css, LitElement } from "lit"
 import L from "../intl"
 import { ExtendedHomeAssistant } from "../types"
+import { findEntities, formTexts, numberSelector, registerCard, sensorSelector } from "../editor"
 
 interface TemperatureHumidityCardConfig {
   title: string
@@ -53,13 +54,44 @@ class TemperatureHumidityCard extends LitElement {
   config!: TemperatureHumidityCardConfig
   hass!: ExtendedHomeAssistant
 
-  static getConfigElement() {
-    return document.createElement("temperature-humidity-card-editor")
+  static getConfigForm() {
+    return {
+      schema: [
+        { name: "title", selector: { text: {} } },
+        {
+          type: "grid",
+          name: "",
+          schema: [
+            { name: "temperature", required: true, selector: sensorSelector("temperature") },
+            { name: "humidity", required: true, selector: sensorSelector("humidity") },
+          ],
+        },
+        {
+          type: "expandable",
+          name: "ventilation",
+          flatten: true,
+          schema: [
+            {
+              type: "grid",
+              name: "",
+              schema: [
+                { name: "outdoor_temperature", selector: sensorSelector("temperature") },
+                { name: "outdoor_humidity", selector: sensorSelector("humidity") },
+                { name: "ventilation_mild_threshold", selector: numberSelector({ min: 0, step: 0.1 }) },
+                { name: "ventilation_strong_threshold", selector: numberSelector({ min: 0, step: 0.1 }) },
+              ],
+            },
+          ],
+        },
+      ],
+      ...formTexts("temp_humidity.editor"),
+    }
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass: ExtendedHomeAssistant, unused?: string[]) {
     return {
-      // ...
+      temperature: findEntities(hass, unused, "sensor", ["temperature"])[0] || "",
+      humidity: findEntities(hass, unused, "sensor", ["humidity"])[0] || "",
     }
   }
 
@@ -235,3 +267,4 @@ class TemperatureHumidityCard extends LitElement {
 }
 
 customElements.define("temperature-humidity-card", TemperatureHumidityCard)
+registerCard("temperature-humidity-card", "Temperature Humidity Card", "Temperature, humidity and dew point in a single card, with an optional ventilation hint.")

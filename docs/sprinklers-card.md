@@ -10,7 +10,7 @@ A custom card to manage ESPHome's Sprinkler controllers from your Home Assistant
 
 If you haven't already, begin by setting up your [Sprinkler Controller](https://esphome.io/components/sprinkler.html) using ESPHome.
 
-To add the card into your panel, add a custom YAML card of type `custom:sprinklers-card`.
+Add it to your dashboard from the card picker and set it up with the visual editor, or use a YAML card of type `custom:sprinklers-card`.
 
 Example configuration:
 

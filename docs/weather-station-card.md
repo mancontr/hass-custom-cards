@@ -6,7 +6,7 @@ A custom card to show a summary of your personal weather station, inspired by th
 
 ## Configuration
 
-To add the card into your panel, add a custom YAML card of type `custom:weather-station-card`.
+Add it to your dashboard from the card picker and set it up with the visual editor, or use a YAML card of type `custom:weather-station-card`.
 
 Every field is optional except for the ones listed as required for each tile below — a tile is only rendered when its primary entity is configured, so you can pick whichever subset of tiles matches the sensors your station exposes.
 

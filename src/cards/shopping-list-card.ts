@@ -1,11 +1,12 @@
 import { html, css, LitElement, PropertyValues } from "lit"
 import L from "../intl"
 import { ExtendedHomeAssistant } from "../types"
+import { findEntities, formTexts, registerCard } from "../editor"
 
 interface ShoppingListCardConfig {
   entity: string
   title?: string
-  show_title?: boolean
+  hide_title?: boolean
 }
 
 type TodoStatus = "needs_action" | "completed"
@@ -63,13 +64,26 @@ class ShoppingListCard extends LitElement {
   completedCollapsed: boolean
   private unsubPromise?: Promise<() => void>
 
-  static getConfigElement() {
-    return document.createElement("shopping-list-card-editor")
+  static getConfigForm() {
+    return {
+      schema: [
+        { name: "entity", required: true, selector: { entity: { filter: { domain: "todo" } } } },
+        {
+          type: "grid",
+          name: "",
+          schema: [
+            { name: "title", selector: { text: {} } },
+            { name: "hide_title", selector: { boolean: {} } },
+          ],
+        },
+      ],
+      ...formTexts("shopping.editor"),
+    }
   }
 
-  static getStubConfig() {
+  static getStubConfig(hass: ExtendedHomeAssistant, unused?: string[]) {
     return {
-      entity: "todo.shopping_list",
+      entity: findEntities(hass, unused, "todo")[0] || "todo.shopping_list",
     }
   }
 
@@ -167,7 +181,7 @@ class ShoppingListCard extends LitElement {
     return html`
       <ha-card>
         <div class="content">
-          ${this.config.show_title !== false ? html`
+          ${!this.config.hide_title ? html`
             <header>
               <h1>${title}</h1>
             </header>
@@ -657,3 +671,4 @@ class ShoppingListCard extends LitElement {
 }
 
 customElements.define("shopping-list-card", ShoppingListCard)
+registerCard("shopping-list-card", "Shopping List Card", "A quick shopping list from a to-do entity, always sorted, with search to re-add items in a click.")

@@ -8,7 +8,7 @@ A custom card for a quick shopping list, built on top of Home Assistant's [To-do
 
 Any to-do list entity works, such as the one created by the [Shopping List](https://www.home-assistant.io/integrations/shopping_list/) integration or a [Local To-do](https://www.home-assistant.io/integrations/local_todo/) list.
 
-To add the card into your panel, add a custom YAML card of type `custom:shopping-list-card`.
+Add it to your dashboard from the card picker and set it up with the visual editor, or use a YAML card of type `custom:shopping-list-card`.
 
 Example configuration:
 
@@ -23,7 +23,7 @@ A comprehensive list of available options is provided below:
 |----------------|----------|-------------|
 | entity         | Yes      | The to-do list entity to show. |
 | title          | No       | Card title override. |
-| show_title     | No       | Set to `false` to hide the title, e.g. in a panel view. Defaults to `true`. |
+| hide_title     | No       | Set to `true` to hide the title, e.g. in a panel view. |
 
 ## Usage
 

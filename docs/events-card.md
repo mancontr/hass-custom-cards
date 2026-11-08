@@ -6,7 +6,7 @@ A custom card to show the latest events of a group of binary sensors, with group
 
 ## Configuration
 
-To add the card into your panel, add a custom YAML card of type `custom:events-card`.
+Add it to your dashboard from the card picker and set it up with the visual editor, or use a YAML card of type `custom:events-card`.
 
 Example configuration:
 
@@ -29,7 +29,8 @@ A comprehensive list of available options is provided below:
 | title          | Yes      | Card title. |
 | entities       | Yes      | List of entities to show. See below for details. |
 
-Each entity can be either the sensor id, or an object with the following fields:
+Each entity can be either the sensor id, or an object with the following fields
+(the visual editor only supports the object form, so a config using plain ids must be edited in YAML):
 
 | Field          | Required | Description |
 |----------------|----------|-------------|

@@ -3,7 +3,7 @@ import { renderCardEl, FULL_COLUMN_WIDTH } from "../story-helpers"
 
 interface Args {
   title: string
-  showTitle: boolean
+  hideTitle: boolean
   panel: boolean
   completedCollapsed: boolean
   language: "en" | "es"
@@ -94,7 +94,7 @@ const meta: Meta<Args> = {
   },
   args: {
     title: "",
-    showTitle: true,
+    hideTitle: false,
     panel: false,
     completedCollapsed: false,
     language: "en",
@@ -109,7 +109,7 @@ const meta: Meta<Args> = {
     const config = {
       entity: ENTITY,
       title: args.title || undefined,
-      show_title: args.showTitle,
+      hide_title: args.hideTitle,
     }
     const extraHass = {
       language: args.language,
@@ -155,11 +155,11 @@ export const Spanish: Story = {
 
 // Without the title, e.g. for a panel view, where HA already shows the
 // view's name right above the card.
-export const NoTitle: Story = { args: { showTitle: false } }
+export const NoTitle: Story = { args: { hideTitle: true } }
 
 // As the only card of a panel view: the content keeps a readable width,
 // centered, instead of stretching across the whole screen.
-export const Panel: Story = { args: { showTitle: false, panel: true } }
+export const Panel: Story = { args: { hideTitle: true, panel: true } }
 
 // Completed items folded away: still reachable from the search box, with
 // their count in the section header.

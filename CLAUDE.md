@@ -10,6 +10,7 @@ Lit-based Home Assistant cards, bundled into one file. Everything in the repo (c
 4. `docs/<name>-card.md` (options table + usage) and a `docs/<name>-card.png` screenshot.
 5. Link it in the README's card list (alphabetical).
 6. Stories in `dev/stories/<name>-card.stories.ts`, with editable Controls for the interesting values.
+7. Visual editor via `static getConfigForm()` (helpers in `src/editor.ts`, labels under `<prefix>.editor.*`), plus a `getStubConfig()` that picks real entities, and `registerCard()` after `customElements.define` so it shows up in the card picker. Cards must render a half-filled config without throwing.
 
 ## Conventions
 
